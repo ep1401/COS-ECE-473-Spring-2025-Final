@@ -1,4 +1,4 @@
-# Crypto Zombies Assignment 1
+# Crypto Zombies 1
 
 To get you started with Solidity, you will complete the Crypto Zombies tutorial. Over the course of this six lesson tutorial, you will code a basic NFT game where you can collect zombie NFTs that spawn and battle each other! This is considered one of the best tutorials in the industry and a great way to learn solidity. 
 

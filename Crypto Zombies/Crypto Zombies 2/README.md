@@ -1,4 +1,4 @@
-# Crypto Zombies Assignment 2
+# Crypto Zombies 2
 
 In this part you will finish the Crypto Zombies tutorial you started in the previous assignment.
 
