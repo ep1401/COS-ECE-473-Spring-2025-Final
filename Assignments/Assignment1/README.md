@@ -1,6 +1,7 @@
-# Assignment 1: Overview
+# Assignment 1: Get started
 In these series of assignments, you will use Solidity to create synthetic assets and develop a decentralized trading platform to enable exchanges among these assets on the Ethereum testnet. In what follows, we explain our final goal and deploy a few simple smart contracts.
 
+# Part 1: Overview
 **Synthetic assets** are tokenized derivatives that produce the same value as another asset. It enables you to trade some assets without holding the asset itself. For instance, on Ethereum, you can trade synthetic assets representing fiat currencies (e.g. synthetic USD), other cryptocurrencies like BTC, even stocks (e.g. synthetic TSLA), which behave like the underlying asset by tracking its price using **data oracles** (will be explained in Part 1). 
 
 We want to create a decentralized system to mint, manage, exchange synthetic assets, here are several example use cases to illustrate the application:
@@ -41,12 +42,12 @@ The whole system consists of three smart contracts, each for one part.
 |SynthSwap | A Uniswap-like automated market maker (AMM) protocol |Part 3
 
 ## Testnet and wallet
-To deploy our contracts, we will use a public blockchain to deploy our smart contracts. In this part, we need to create some public accounts in **Sepolia Testnet** and use **Metamask** to manage them.
+To deploy our contracts, we will use a public blockchain. In this part, we need to create some public accounts in **Sepolia Testnet** and use **Metamask** to manage them.
 
 0. You have done steps 1 to 3 already for your lab, just make sure they check out.
 1. Install [MetaMask](https://chrome.google.com/webstore/detail/metamask/nkbihfbeogaeaoehlefnkodbefgpgknn) on Chrome, follow the instructions on the app to create a new wallet. After entering the correct phrases, a new account will be created automatically. You can create any number of accounts by clicking the upper right icon and *Create Account*.
 2. Switch to Sepolia Testnet: click the *Ethereum Mainnet* at the top right corner of the wallet page and turn on the testnet list by setting *Show/hide test networks*. Switch the network to *Sepolia Testnet*.
-3. Get some free ETH: go to a [faucet](https://sepoliafaucet.com/) and enter your address, you will get 0.5 ETH for testing. You would have to create a free Alchemy account.
+3. Get some free ETH: go to a [faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) and enter your address, you will get 0.05 ETH for testing.
 4. Open [Remix](https://remix.ethereum.org/) in Chrome as well, in the *Deploy & run transactions* tab, set the environment to *Injected Web3*. This will launch a popup page to connect with your wallet.
 
 
@@ -71,3 +72,25 @@ Because this code will be used in later parts, make sure you are able to interac
 Submit the etherscan links to the 3 contracts to this form : https://forms.gle/GZRRX54Csodezbmt6 
 
  
+# Part 2: Creating price feeds
+
+To reflect the value of other assets, we need to first obtain price feeds before minting synthetic assets. While everyone can get the latest price of a stock on NASDAQ and put it on the chain, data consumers may not want to trust any single data provider.
+
+**Data oracles** provide a decentralized and trustworthy way for blockchains to access external data sources. Resources external to the blockchain are considered "off-chain" while data stored on the blockchain is considered on-chain. Oracle is an additional piece of infrastructure to bridge the two environments.
+
+In this part, we will use one of the most popular oracle solutions, [Chainlink](https://docs.chain.link/), to create price feeds for our synthetic tokens.
+
+
+
+## Price feed interface
+We have provided the interface of the price feed smart contract in `interfaces/IPriceFeed.sol`, you need to implement your `PriceFeed.sol` and deploy one instance for each synthetic asset to provide their prices with respect to USD. You can refer to [this tutorial](https://docs.chain.link/docs/get-the-latest-price/) for help. The proxy addresses of each asset in Sepolia are provided below:
+
+```
+TSLA / USD: 0xC32f0A9D70A34B9E7377C10FDAd88512596f61EA
+BNB / USD: 0x8A6af2B75F23831ADc973ce6288e5329F63D86c6
+```
+1. There is only one function defined in the interface, you are required to implement it to provide the requested information. You can design other parts of the contract as you like.
+2. Deploy the price feed contract for each asset, test the interface and copy their addresses. Once the deployment transactions are confirmed, you are able to find the deployed contracts in [etherscan](https://sepolia.etherscan.io/) with https://sepolia.etherscan.io/address/{:your_contract_address}.
+
+## Submission
+Submit the **etherscan links** to the two contracts to this form: [https://forms.gle/XH6gU7782Vn7dFEY8](https://forms.gle/XH6gU7782Vn7dFEY8).

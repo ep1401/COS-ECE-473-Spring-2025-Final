@@ -1,84 +1,83 @@
-# Assignment 4: Building a DEX platform
+# Assignment 4: Integrating your synthetic Dapp
 
-**Decentralized exchange (DEX)** is a peer-to-peer marketplace where transactions occur directly between traders. Specifically, DEXs are a set of smart contracts that establish the prices of various tokens against each algorithmically and use “liquidity pools” to facilitate trades. 
+Welcome to the last part of this project! So far you have completed all the contracts in Solidity needed for your Dapp, the last step is to integrate them with a web client to complete the end product. At the end of this part, you will get your first comprehensive decentralized application. Don't forget to give it an awesome name and slogan!
 
-**Liquidity pool** is a pot of assets locked within a smart contract, which can be used for exchanges, loans and other applications. Investors who lock funds in a liquidity pool for rewards are called **liquidity providers**. Anyone can become a liquidity provider by depositing an equivalent value of each underlying token in return for pool shares (also called LP tokens). Shareholders can redeem the underlying assets at any time and claim pro-rata protocol fees as rewards, which are collected from each exchange made by traders.
-
-The protocol in this part is derived from [Uniswap v2](https://docs.uniswap.org/protocol/V2/introduction), where we use [constant product formula x * y = k](https://docs.uniswap.org/protocol/V2/concepts/protocol-overview/how-uniswap-works) to determine exchange prices. A formal specification of the constant product market maker model can be found [here](https://github.com/runtimeverification/verified-smart-contracts/blob/uniswap/uniswap/x-y-k.pdf).
-
-## Swap interface
-In this part, you need to implement basic functions of DEXs in `contracts/Swap.sol` to manage a liquidity pool made up of reserves of two sAsset tokens and enable exchanges between them. Please follow the below specifications and the interfaces defined in `contracts/interfaces/ISwap.sol`. 
-
-### State variables
-
-* `token0` / `token1`: addresses of a pair of sAsset tokens
-* `reserve0` / `reserve1`: quantity of each sAsset token in the pool
-* `totalShares`: the total amount of shares owned by all liquidity providers
-* `shares`: a mapping from the address of a liquidity provider to the number of shares owned by the liquidity provider. `shares[LP] / totalShares` represents the relative proportion of total reserves that each liquidity provider has contributed
-
-
-
-### Functions
-There are some functions already implemented for the initial setup.
-
-* `init` is used by the first liquidity provider (in our project it should be the owner of the contract) to deposit both tokens with equal values. The ratio of tokens defines the initial exchange rate and reflects the price of two tokens in the global market as the liquidity provider believes. The amount of initial shares follows [Uniswap v2 (section 3.4)](https://uniswap.org/whitepaper.pdf) and is set to be equal to the geometric mean of the amounts deposited: `shares = sqrt(amount0 * amount1)`.
-* `sqrt` is a helper function to calculate square root.
-* `getReserves` is a view function that returns the reserves of two tokens.
-* `getTokens` is a view function that returns the addresses of two tokens.
-* `getShares` is a view function that returns the number of shares owned by the given address.
-
-The remaining functions are left for you to implement.
-
-* `addLiquidity` is used by future liquidity providers to deposit tokens, and will generate new shares based on the token amount in the deposit w.r.t. the pool. Adding liquidity requires an equivalent value of two tokens. Callers need to specify the amount of token 0 they want to deposit (`amount0`) and the amount of token 1 required to be added (`amount1`) is determined using the reserve rate at the moment of their deposit, i.e.,`amount1 = reserve1 * amount0 / reserve0`. And the amount of shares received by the liquidity provider is: `new_shares = total_shares * amount0 / reserve0`.
-* `token0To1` / `token1To0` are the functions for converting token 0/1 to token 1/0 while maintaining the relationship `reserve0 * reserve1 = invariant`. The input specifies the number of source tokens sent to the smart contract, the function then computes the number of target tokens sent to the caller based on the current price rate and the input (after subtracting the 0.3% protocol fee). For example, to exchange 1000 token 0 for token 1, with original reserves`(reserve0, reserve1) = (1000000, 1000000)` in the pool, you will get 996 token 1 as a return:
-    
-    ```
-    token0_sent = 1000
-    protocol_fee = 1000 * 0.3% = 3
-    token0_to_exchange = 1000 * (1 - 0.3%) = 997
-    
-    invariant = 1000000 * 1000000 
-              = (1000000 + token0_to_exchange) * (1000000 - token1_to_return)
-    
-    token1_to_return = 1000000 - 1000000 * 1000000 / (1000000 + 997) = 996
-    Thus, token_received = 996
-    ```
-    After the exchange, the protocol fee is added to reserves. So the new reserves become `(reserve0, reserve1) = (1001000, 999004)`. As a result, the invariant actually slightly increases to `1001000 * 999004`. This functions as a payout to shareholders.
-* `removeLiquidity` is used by liquidity providers to withdraw their proportional share of tokens from the pool. Tokens are withdrawn at the current reserve ratio, given the number of shares to withdraw, the amounts of tokens are calculated by
-    ```
-    amount0 = reserve0 * withdrawn_shares / total_shares
-    amount1 = reserve1 * withdrawn_shares / total_shares
-    ```
-
-    Notice that protocol fees taken during trades are already included in liquidity pools but generate no extra shares, thus the amounts of withdrawn tokens include all fees collected since the liquidity was first added.
-
-
-## Testing
-
-Similar to Assignment 3, we will use Truffle to test smart contracts and Ganache to simulate a local blockchain. The testing script is provided in `test/test.js`.
-
-1. Run `ganache-cli` to run a node of the local blockchain.
-2.  `cd Assignment4` and run `npm install` to install openzeppelin packages. 
-3. Replace the `Swap.sol` contract in the `contracts` folder with your implementation. Run `truffle test`.
-
-### Notes on decimals
-Due to the lack of floating-point numbers, Solidity arithmetic chops off the decimal portion of a number, which may cause the difference between your calculation and the results in the testing script even using the same formula. For example:
+## Contracts
+The first thing you need to do is to prepare all contracts in the `contracts/` directory. Recall you have implemented the following contracts:
 
 ```
- To calculate 1000000 - 1000000 * 1000000 / (1000000 + 997) in solidity
- The exact result is 996.00698
- The expected result is 996
- But if you put the above formula directly in solidity, the output is 997
- Since it first calculates 1000000 * 1000000 / (1000000 + 997) which is 999003.993 but gets truncated to 999003
+Tokens (Assignment1-Part1)
+├── EUSD
+└── sAsset
+    ├── sBNB
+    └── sTSLA
+
+Applications
+├── IPriceFeed (Assignment1-Part2)
+|   ├── BNBPriceFeed
+|   └── TSLAPriceFeed
+├── IMint (Assignment2)
+└── Swap (Assignment3)
 ```
+You only need to copy and paste the `Mint.sol` and `Swap.sol` contracts to the corresponding files. The rest of them are provided. We use constant price feeds to simplify local testing in this part and you should replace them with what you have implemented in Assignment 1 part 2 when working with a testnet or mainnet.
 
-To avoid such rounding errors, you would need to be careful with the order of operations, such as multiplying or adding before dividing. **In testing we will allow a small rounding error (100 out of 10^8).** Generally, it is a good idea to delay division until as late as possible.
+Then you need to compile and deploy the contracts in a local blockchain by running the following commands:
+1. Run `ganache-cli` to simulate a node on your local blockchain.
+2. `cd Assignment4` and run `npm install` to install openzeppelin packages.
+3. Run `truffle compile && truffle deploy` to compile and deploy all contracts.
 
 
+## Web client
+
+Next you are going to finish the JavaScript functions in `app/src/index.js` to create a web client interacting with your contracts. We use truffle and webpack to compile and build the app. Before you start, run the following commands:
+
+1. Open MetaMask in your browser, and switch the network to *Localhost 8545*.
+2. Click the avatar at the top right corner, select *Import Account*, and enter the private key string of the **first** account generated by ganache (it can be found in the outputs of ganache-cli). You will see the imported account with some balance (<100ETH) in the account list. 
+3. `cd app && npm install` to install web3 and webpack modules.
+4. Run `npm run dev` to build the app and serve it on localhost.
+5. Now open http://127.0.0.1:8080, this will launch a popup page to connect with your account.
+6. After the account is connected, you need to confirm several transactions to finish the setup. These transactions are used to grant roles to the Mint contract and register two sAssets.
+
+
+Now the application is running, by clicking three tabs (Mint, Pool, Swap) you can see the basic user interfaces. For example, if you select `sTSLA` and click the *Check price* button under the Mint tab, the latest price (1008.85500000) of `sTSLA` will be displayed. The functions used to interact with the contracts are defined in `app/src/index.js` and you can check how they are used in `app/src/index.html`. Some functions are already implemented, your task is to complete the rest of them according to the following specifications. 
+
+### Mint
+* `openPosition`: get the inputs from the client with element id `(sAsset, deposit, CR)`, approve the transfer of collateral tokens and call `openPosition` of the `Mint` contract with specified parameters. Update the balances at the end.
+
+Other functions such as `closePosition`, and `deposit / withdraw` are not required in this project.
+
+### Pool
+
+* `addLiquidity`: get the inputs from the client with element id `(liquidity0, liquidity1)`, approve the transfer of sAsset tokens and call `addLiquidity` of `Swap` contract with specified parameters. Update the balances at the end.
+* `removeLiquidity`: get the input from the client with element id `shares`, call `removeLiquidity` of `Swap` contract with the specified parameter. Update the balances at the end.
+
+### Swap
+* `token0To1 / token1To0`: get the inputs from the client with element id `swap0 / swap1`, approve the transfer of sAsset tokens, and call `token0To1 / token1To0` of the `Swap` contract with specified parameters. Update the balances at the end.
+
+## Tips 
+1. Every time you run `ganache-cli` it will generate a new list of accounts. To avoid importing new accounts to MetaMask, you can save the mnemonic (in the output of ganache) and run `ganache-cli -m "mnemonic phrases"` to keep the same list of accounts. But the states of the blockchain won't be saved.
+2. `init` function has been implemented as an example showing how a function gets the inputs, calls functions in smart contracts, and writes the outputs back to the web client.
+3. You can change a cooler name and slogan of your app in `app/scr/index.html`. Remember not to modify other codes.
+4. For debugging, you can open the browser developer console to view any errors and warnings.
 
 ## Submission
-Rename the `Swap.sol` to `netid.sol` and upload it to [this form](https://forms.gle/QQuKk2dzj2Zzsee98). The grading will be conducted using truffle with more tests, including both valid and invalid operations (such as trade with an incorrect ratio of tokens, and withdrawal that exceeds share proportions).
+Rename the `index.js` to `netid.js` and upload it to [this form](https://forms.gle/vKicaicGtA5oS5pYA).
 
+## Demo
+
+You can run a demo by checking that your web client can do the following things:
+
+1. Mint sAsset by clicking the *Open position* button.
+2. Add liquidity with correct input amounts by clicking the *Add liquidity* button.
+3. Remove liquidity with valid input shares by clicking the *Withdraw* button.
+4. Swap between two sAssets by clicking the *Swap* button.
+
+All the above operations should result in reasonable balances / reserves changes. Besides, the following behaviors should be rejected:
+
+1. All operations with insufficient funds, e.g. the amount of collateral tokens to deposit exceeds the balance.
+2. All operations with incorrect ratios, e.g. collateral ratio that does not exceed MCR, add liquidity with inequivalent values.
+3. Add liquidity before initializing the pool.
+4. Remove liquidity with more shares than owned.
 
 
 

@@ -1,190 +1,149 @@
-const fs = require('fs').promises;
-contracts_to_deploy = ['Mint', 'EUSD', 'sAsset', 'PriceFeed']
 var contracts = {}
+const contracts_to_deploy = ['sBNB', 'sTSLA', 'Swap']
 for (name of contracts_to_deploy) {
     contracts[name] = artifacts.require(name)
 }
 
-contract("Mint test", async accounts => {
-    console.log('starting test')
+contract("Swap test", async accounts => {
     
     it("Running setup", async () => {
-        var instances = {}
+        var instances = {};
         for (name of contracts_to_deploy) {
-            instances[name] = await contracts[name].deployed()
+            instances[name] = await contracts[name].deployed();
         }
-        
-        let minterRole = await instances['sAsset'].MINTER_ROLE.call()
-        let burnerRole = await instances['sAsset'].BURNER_ROLE.call()
 
-        let minter_result = await instances['sAsset'].hasRole.call(minterRole, instances['Mint'].address)
-        let burner_result = await instances['sAsset'].hasRole.call(burnerRole, instances['Mint'].address)
-        assert.equal(minter_result, false);
-        assert.equal(burner_result, false);
-        await instances['sAsset'].grantRole(minterRole, instances['Mint'].address);
-        await instances['sAsset'].grantRole(burnerRole, instances['Mint'].address);
+        const amount = 500000 * 10 ** 8;
+        const tokens = await instances['Swap'].getTokens.call();
+        assert.equal(tokens[0], instances['sBNB'].address);
+        assert.equal(tokens[1], instances['sTSLA'].address);
         
-        let registered = await instances['Mint'].checkRegistered.call(instances['sAsset'].address)
-        assert.equal(registered, false);
-        instances['Mint'].registerAsset(instances['sAsset'].address, 2, instances['PriceFeed'].address)
-
+        await instances['sBNB'].approve(instances['Swap'].address, amount);
+        await instances['sTSLA'].approve(instances['Swap'].address, amount);
+        await instances['Swap'].init(amount, amount);
+        
     });
     it("Checking setup", async () => {
         var instances = {}
         for (name of contracts_to_deploy) {
             instances[name] = await contracts[name].deployed()
         }
-        const balance = await instances['EUSD'].balanceOf.call(accounts[0]);
-        const symbol = await instances['sAsset'].symbol.call();
-        const price = await instances['PriceFeed'].getLatestPrice.call();
-        assert.equal(balance, 10000000000000000);
-        assert.equal(symbol, 'sTSLA');
-        assert.equal(price[0], 100000000000);
-        let minterRole = await instances['sAsset'].MINTER_ROLE.call()
-        let burnerRole = await instances['sAsset'].BURNER_ROLE.call()
 
-        let minter_result = await instances['sAsset'].hasRole.call(minterRole, instances['Mint'].address)
-        let burner_result = await instances['sAsset'].hasRole.call(burnerRole, instances['Mint'].address)
-        assert.equal(minter_result, true);
-        assert.equal(burner_result, true);
+        const amount = 500000 * 10 ** 8;
+        const reserves = await instances['Swap'].getReserves.call();
+        assert.equal(reserves[0], amount);
+        assert.equal(reserves[1], amount);
 
-        let registered = await instances['Mint'].checkRegistered.call(instances['sAsset'].address)
-        assert.equal(registered, true);
+        const shares = await instances['Swap'].getShares.call(accounts[0]);
+        assert.equal(shares, amount);
 
-        const collateral = await instances['EUSD'].balanceOf.call(instances['Mint'].address);
-        assert.equal(collateral, 0);
-          
     });
 
-    it("Test 1: test openPosition", async () => {
+    it("Test 1: test addLiquidity", async () => {
         var instances = {}
         for (name of contracts_to_deploy) {
             instances[name] = await contracts[name].deployed()
         }
-        const collateralAmount = 3000 * 10 ** 8
-        const collateralRatio = 2
-        const price = await instances['PriceFeed'].getLatestPrice.call();
+        const amount = 500000 * 10 ** 8;
+        await instances['sBNB'].approve(instances['Swap'].address, amount);
+        await instances['sTSLA'].approve(instances['Swap'].address, amount);
+        await instances['Swap'].addLiquidity(amount);
 
-        await instances['EUSD'].approve(instances['Mint'].address, collateralAmount);
-        await instances['Mint'].openPosition(collateralAmount, instances['sAsset'].address, collateralRatio);
+        const reserves = await instances['Swap'].getReserves.call();
+        assert.equal(reserves[0], amount * 2);
+        assert.equal(reserves[1], amount * 2);
 
-        let result = await instances['Mint'].getPosition.call(0);
-        assert.equal(result[0], accounts[0]);
-        assert.equal(result[1], collateralAmount);
-        assert.equal(result[2], instances['sAsset'].address);
-        assert.equal(result[3], 150000000);
-
-        const balance = await instances['sAsset'].balanceOf.call(accounts[0]);
-        assert.equal(balance, 150000000);
-
-        const collateral = await instances['EUSD'].balanceOf.call(instances['Mint'].address);
-        assert.equal(collateral, collateralAmount);
-    });
-
-    it("Test 2: test deposit", async () => {
-        var instances = {}
-        for (name of contracts_to_deploy) {
-            instances[name] = await contracts[name].deployed()
-        }
-        const collateralAmount = 3000 * 10 ** 8
-        const collateralRatio = 2
-
-        await instances['EUSD'].approve(instances['Mint'].address, collateralAmount);
-        await instances['Mint'].deposit(0, collateralAmount);
-
-        let result = await instances['Mint'].getPosition.call(0);
-        assert.equal(result[0], accounts[0]);
-        assert.equal(result[1], collateralAmount * 2);
-        assert.equal(result[2], instances['sAsset'].address);
-        assert.equal(result[3], 150000000);
+        const shares = await instances['Swap'].getShares.call(accounts[0]);
+        assert.equal(shares, amount * 2);
         
-        const collateral = await instances['EUSD'].balanceOf.call(instances['Mint'].address);
-        assert.equal(collateral, collateralAmount * 2);
     });
 
-    it("Test 3: test withdraw", async () => {
+    it("Test 2: test token0To1", async () => {
         var instances = {}
         for (name of contracts_to_deploy) {
             instances[name] = await contracts[name].deployed()
         }
-        const collateralAmount = 3000 * 10 ** 8
-        const collateralRatio = 2
 
-        await instances['Mint'].withdraw(0, collateralAmount);
+        const tokenSent = 1000 * 10 ** 8;
+        await instances['sBNB'].transfer(accounts[1], tokenSent);
+        await instances['sBNB'].approve(instances['Swap'].address, tokenSent, { from: accounts[1] });
+        await instances['Swap'].token0To1(tokenSent, { from: accounts[1] });
 
-        let result = await instances['Mint'].getPosition.call(0);
-        assert.equal(result[0], accounts[0]);
-        assert.equal(result[1], collateralAmount);
-        assert.equal(result[2], instances['sAsset'].address);
-        assert.equal(result[3], 150000000);
+        const tokenReceived = await instances['sTSLA'].balanceOf.call(accounts[1]);
 
-        const collateral = await instances['EUSD'].balanceOf.call(instances['Mint'].address);
-        assert.equal(collateral, collateralAmount);
+        assert(Math.abs(tokenReceived - 99600698103) < 100);
+        const reserves = await instances['Swap'].getReserves.call();
+        assert.equal(reserves[0], 1000000 * 10 ** 8 + tokenSent);
+        assert.equal(reserves[1], 1000000 * 10 ** 8 - tokenReceived);
+
     });
 
-    it("Test 4: test burn", async () => {
+    it("Test 3: test token1To0", async () => {
         var instances = {}
         for (name of contracts_to_deploy) {
             instances[name] = await contracts[name].deployed()
         }
-        const collateralAmount = 3000 * 10 ** 8
-        const collateralRatio = 2
 
-        let result = await instances['Mint'].getPosition.call(0);
-        assert.equal(result[0], accounts[0]);
-        assert.equal(result[1], collateralAmount);
-        assert.equal(result[2], instances['sAsset'].address);
-        assert.equal(result[3], 150000000);
+        const reserves_before = await instances['Swap'].getReserves.call();
 
-        await instances['Mint'].burn(0, result[3]);
+        const tokenSent = 1000 * 10 ** 8;
+        await instances['sTSLA'].transfer(accounts[2], tokenSent);
+        await instances['sTSLA'].approve(instances['Swap'].address, tokenSent, { from: accounts[2] });
+        await instances['Swap'].token1To0(tokenSent, { from: accounts[2] });
 
-        result = await instances['Mint'].getPosition.call(0);
-        assert.equal(result[0], accounts[0]);
-        assert.equal(result[1], collateralAmount);
-        assert.equal(result[2], instances['sAsset'].address);
-        assert.equal(result[3], 0);
-
-        const balance = await instances['sAsset'].balanceOf.call(accounts[0]);
-        assert.equal(balance, 0);
+        const tokenReceived = await instances['sBNB'].balanceOf.call(accounts[2]);
+        assert(Math.abs(tokenReceived - 99799600897) < 100);
+        const reserves = await instances['Swap'].getReserves.call();
+        assert(reserves[0].eq(reserves_before[0].sub(tokenReceived)));
+        assert.equal(reserves[1], reserves_before[1].toNumber() + tokenSent);
+        
     });
 
-    it("Test 5: test mint", async () => {
+    it("Test 4: test removeLiquidity", async () => {
         var instances = {}
         for (name of contracts_to_deploy) {
             instances[name] = await contracts[name].deployed()
         }
-        const collateralAmount = 3000 * 10 ** 8
-        const collateralRatio = 2
 
-        await instances['Mint'].mint(0, 150000000);
+        const reserves = await instances['Swap'].getReserves.call();
 
-        let result = await instances['Mint'].getPosition.call(0);
-        assert.equal(result[0], accounts[0]);
-        assert.equal(result[1], collateralAmount);
-        assert.equal(result[2], instances['sAsset'].address);
-        assert.equal(result[3], 150000000);
+        const balance0 = await instances['sBNB'].balanceOf.call(accounts[0]);
+        const balance1 = await instances['sTSLA'].balanceOf.call(accounts[0]);
+        const shares = await instances['Swap'].getShares.call(accounts[0]);
 
-        const balance = await instances['sAsset'].balanceOf.call(accounts[0]);
-        assert.equal(balance, 150000000);
+        await instances['Swap'].removeLiquidity(shares);
+        
+        const new_reserves = await instances['Swap'].getReserves.call();
+        assert.equal(new_reserves[0], 0);
+        assert.equal(new_reserves[1], 0);
+
+        const new_balance0 = await instances['sBNB'].balanceOf.call(accounts[0]);
+        const new_balance1 = await instances['sTSLA'].balanceOf.call(accounts[0]);
+        
+        assert(new_balance0.eq(balance0.add(reserves[0])));
+        assert(new_balance1.eq(balance1.add(reserves[1])));
+
+        const new_shares = await instances['Swap'].getShares.call(accounts[0]);
+        assert.equal(new_shares, 0);
+        
     });
 
-    it("Test 6: test closePosition", async () => {
+    it("Test 5: test invalid removeLiquidity", async () => {
         var instances = {}
         for (name of contracts_to_deploy) {
             instances[name] = await contracts[name].deployed()
         }
-        const collateralAmount = 3000 * 10 ** 8
-        const collateralRatio = 2
 
-        await instances['Mint'].closePosition(0);
+        const shares = await instances['Swap'].getShares.call(accounts[0]);
+        assert.equal(shares, 0);
 
-        let result = await instances['Mint'].getPosition.call(0);
-        assert.equal(result[0], 0);
-        assert.equal(result[1], 0);
-        assert.equal(result[2], 0);
-        assert.equal(result[3], 0);
+        var error = false;
+        try {
+            assert.throws(await instances['Swap'].removeLiquidity(shares + 1));           
+        } catch (err) {
+            error = true;
+        }
+        assert(error);
 
-        const balance = await instances['sAsset'].balanceOf.call(accounts[0]);
-        assert.equal(balance, 0);
     });
+
 });
