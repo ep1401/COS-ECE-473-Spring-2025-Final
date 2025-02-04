@@ -7,5 +7,5 @@ In this part you will finish the Crypto Zombies tutorial you started in the prev
 Note: Each lesson contains many “chapters” but these are really just short steps you will take to complete the assignment
 
 ## Submission
-At the end of each lesson, if you complete each chapter, you will receive a unique permalink to share your progress, please record each link and submit all three through the quiz on canvas, titled Crypto Zombies Part 2 Submission.
+At the end of each lesson, if you complete each chapter, you will receive a unique permalink to share your progress, please record each link and submit all three through [this submission form](https://forms.gle/JB7rYCQ9fWMt6g4a8).
 
