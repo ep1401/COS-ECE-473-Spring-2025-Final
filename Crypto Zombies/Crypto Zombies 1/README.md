@@ -12,5 +12,5 @@ To get you started with Solidity, you will complete the Crypto Zombies tutorial.
 Note: Each lesson contains many “chapters” but these are really just short steps you will take to complete the assignment
 
 ## Submission
-At the end of each lesson, if you complete each chapter, you will receive a unique permalink to share your progress, please record each link and submit all three through the quiz on canvas, titled Crypto Zombies Part 1 Submission.
+At the end of each lesson, if you complete each chapter, you will receive a unique permalink to share your progress, please record each link and submit all three through [this submission form](https://forms.gle/UYKz26MzcXWepKTm7).
 
