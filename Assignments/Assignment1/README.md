@@ -63,14 +63,6 @@ contracts/sAsset.sol
 3. Create EUSD by deploying `EUSD.sol`, this will create a contract deployment transaction. The information and status of the transaction will be displayed in the terminal. Deployment is done using the *Deploy and run transactions* tab on the left. Make sure you connect your Metamask wallet by selecting your *Environment* to be *Injected provider - Metamask*.
 4. Create sBNB and sTSLA by deploying `sAsset.sol` with corresponding parameters ``(name, symbol, initialSupply)``, `name` and `symbol` are provided in the token table in the section above, `initialSupply = 0`.
 5. After a contract is successfully deployed, you can see the instance under *Deployed Contracts*, where you can get your contract address and interact with the contract manually (e.g. if you call the `balanceOf` function of EUSD and enter your account address, you will get the number of EUSD tokens as output). 
-
-## Submission
-You will need to submit the addresses of your deployed contracts. Please make sure you deploy and interact with your contract using the public address you had provided to us at the start of the class. **Make sure you [verify your contract](https://sepolia.etherscan.io/verifyContract) on etherscan**- this would make it easier for you to interact with it and for us to check it.
-
-Because this code will be used in later parts, make sure you are able to interact with your smart contracts. Test the main functionalities of the tokens like `transfer`, `transferFrom`, and `mint`, `burn` for sAsset. Note that we use [Access Control](https://docs.openzeppelin.com/contracts/4.x/access-control) in sAsset to govern who can mint and burn tokens. The contract creator can grant minter and burner roles to other accounts by calling the `grantRole` function. You can select different accounts under *Account* to test these functions.
-
-Submit the etherscan links to the 3 contracts to this form : https://forms.gle/GZRRX54Csodezbmt6 
-
  
 # Part 2: Creating price feeds
 
@@ -92,5 +84,12 @@ BNB / USD: 0x8A6af2B75F23831ADc973ce6288e5329F63D86c6
 1. There is only one function defined in the interface, you are required to implement it to provide the requested information. You can design other parts of the contract as you like.
 2. Deploy the price feed contract for each asset, test the interface and copy their addresses. Once the deployment transactions are confirmed, you are able to find the deployed contracts in [etherscan](https://sepolia.etherscan.io/) with https://sepolia.etherscan.io/address/{:your_contract_address}.
 
-## Submission
-Submit the **etherscan links** to the two contracts to this form: [https://forms.gle/XH6gU7782Vn7dFEY8](https://forms.gle/XH6gU7782Vn7dFEY8).
+# Submission
+
+You will need to submit the addresses of your deployed contracts. Please make sure you deploy and interact with your contract using the public address you had provided to us at the start of the class. **Make sure you verify your contract on etherscan**- this would make it easier for you to interact with it and for us to check it. Verifying the contract makes the contract code show up in high level Solidity as opposed to low level Bytecode on Etherscan. To verify the contracts follow these steps:
+1. Get an Etherscan API key [from here](https://docs.etherscan.io/getting-started/viewing-api-usage-statistics).
+2. Use the key to verify your contract using the [Remix contract verification plugin](https://remix-ide.readthedocs.io/en/latest/contract_verification.html).
+
+Because this code will be used in later parts, make sure you are able to interact with your smart contracts via Remix or Etherscan. Test the main functionalities of the tokens like `transfer`, `transferFrom`, and `mint`, `burn` for sAsset. Note that we use [Access Control](https://docs.openzeppelin.com/contracts/4.x/access-control) in sAsset to govern who can mint and burn tokens. The contract creator can grant minter and burner roles to other accounts by calling the `grantRole` function. You can select different accounts under *Account* to test these functions.
+
+Submit the etherscan links to the 5 contracts to this form : [SUBMISSION FORM](https://forms.gle/NBkHJzxqA9Tiuvkx7)
