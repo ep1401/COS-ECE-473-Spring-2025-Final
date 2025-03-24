@@ -17,6 +17,7 @@ const App = {
 
         try {
             const networkId = await web3.eth.net.getId();
+
             const contracts_to_deploy = ['EUSD', 'sBNB', 'sTSLA', 'Mint', 'Swap', 'BNBPriceFeed', 'TSLAPriceFeed']
             var deployedNetworks = {}
             deployedNetworks['EUSD'] = EUSDArtifact.networks[networkId];
@@ -74,7 +75,6 @@ const App = {
             this.meta[priceFeed].options.address
             ).send({from: this.accounts[0]});
         }
-        
     },
 
     setup: async function() {
@@ -168,67 +168,228 @@ const App = {
 
     /* Mint tab */
     openPosition: async function() {
+        console.log("openPosition called");
         this.setStatus("Initiating transaction... (please wait)");
+    
+        try {
+            const sAsset = document.getElementById("sAsset").value;
+            const deposit = parseInt(document.getElementById("deposit").value * 10**8).toString();
+            const CR = parseInt(document.getElementById("CR").value * 10**8).toString();
+    
+            console.log("Minting:", sAsset, "Deposit:", deposit, "CR:", CR);
+    
+            // Ensure sAsset is valid
+            if (!this.meta[sAsset]) {
+                throw new Error(`Invalid asset selected: ${sAsset}`);
+            }
+    
+            const assetAddress = this.meta[sAsset].options.address;
+            console.log("Resolved asset address:", assetAddress);
+    
+            // Check if assetAddress is a valid Ethereum address
+            if (!this.web3.utils.isAddress(assetAddress)) {
+                throw new Error(`Invalid Ethereum address for asset: ${assetAddress}`);
+            }
 
-        // TODO
+            console.log("Asset address is valid:", assetAddress);
+    
+            // Check user balance before approving
+            const userBalance = await this.meta['EUSD'].methods.balanceOf(this.accounts[0]).call();
+            if (BigInt(userBalance) < BigInt(deposit)) {
+                throw new Error("Insufficient EUSD balance!");
+            }
 
-        this.setStatus("Transaction complete!");
+            console.log("User balance is sufficient:", userBalance, "Deposit:", deposit);
+    
+            // Approve EUSD for deposit
+            await this.approve('EUSD', this.meta['Mint'].options.address, deposit);
+            
+        console.log("Deposit approved for Mint contract");
+
+            // ✅ Correcting parameter order here
+            await this.meta['Mint'].methods.openPosition(
+                deposit, // Correct order
+                assetAddress, 
+                CR
+            ).send({ from: this.accounts[0] });
+    
+            this.refreshBalance();
+            this.setStatus("Transaction complete!");
+        } catch (err) {
+            console.error("Error in openPosition:", err.message);
+            this.setStatus("Transaction failed. Check console for details.");
+        }
     },
 
-    /* Pool tab */
-    addLiquidity: async function() {
+    addLiquidity: async function () {
         this.setStatus("Initiating transaction... (please wait)");
-
-        // TODO
-
-        this.setStatus("Transaction complete!");
-    },
+    
+        try {
+            const liquidity0 = parseInt(document.getElementById("liquidity0").value * 10 ** 8).toString();
+            const reserves = await this.meta['Swap'].methods.getReserves().call();
+    
+            if (BigInt(reserves[0]) === 0n || BigInt(reserves[1]) === 0n) {
+                throw new Error("Pool not initialized. Call init() first.");
+            }
+    
+            // Calculate token1Amount using pool ratio
+            const token1Amount = (BigInt(reserves[1]) * BigInt(liquidity0)) / BigInt(reserves[0]);
+    
+            // Approve both tokens
+            await this.approve('sBNB', this.meta['Swap'].options.address, liquidity0);
+            await this.approve('sTSLA', this.meta['Swap'].options.address, token1Amount.toString());
+    
+            console.log("Approvals done:", liquidity0, token1Amount.toString());
+    
+            // Call addLiquidity with token0Amount
+            await this.meta['Swap'].methods.addLiquidity(liquidity0)
+                .send({ from: this.accounts[0] });
+    
+            this.refreshBalance();
+            this.setStatus("Liquidity added successfully!");
+        } catch (err) {
+            console.error("Error in addLiquidity:", err.message);
+            this.setStatus("Transaction failed. Check console for details.");
+        }
+    },       
 
     removeLiquidity: async function() {
         this.setStatus("Initiating transaction... (please wait)");
+    
+        try {
+            const shares = parseInt(document.getElementById("shares").value).toString();
+    
+            console.log("Removing liquidity: Shares:", shares);
+    
+            // Ensure valid input
+            if (BigInt(shares) <= 0n) {
+                throw new Error("Shares must be greater than zero.");
+            }
+    
+            // Check user's current share balance
+            const userShares = await this.meta['Swap'].methods.getShares(this.accounts[0]).call();
+            if (BigInt(userShares) < BigInt(shares)) {
+                throw new Error("Insufficient shares to remove!");
+            }
+    
+            // Call `removeLiquidity()` on the contract
+            await this.meta['Swap'].methods.removeLiquidity(shares)
+                .send({ from: this.accounts[0] });
+    
+            this.refreshBalance();
+            this.setStatus("Liquidity removed successfully!");
+        } catch (err) {
+            console.error("Error in removeLiquidity:", err.message);
+            this.setStatus("Transaction failed. Check console for details.");
+        }
+    },    
 
-        // TODO
-
-        this.setStatus("Transaction complete!");
-    },
-
-    /* Swap tab */
     token0To1: async function() {
         this.setStatus("Initiating transaction... (please wait)");
-
-        // TODO
-
-        this.setStatus("Transaction complete!");
-    },
+    
+        try {
+            const amount = parseInt(document.getElementById("swap0").value * 10**8).toString();
+    
+            console.log("Swapping sBNB -> sTSLA, Amount:", amount);
+    
+            // Ensure valid input
+            if (BigInt(amount) <= 0n) {
+                throw new Error("Swap amount must be greater than zero.");
+            }
+    
+            // Check user's sBNB balance
+            const userBalance = await this.meta['sBNB'].methods.balanceOf(this.accounts[0]).call();
+            if (BigInt(userBalance) < BigInt(amount)) {
+                throw new Error("Insufficient sBNB balance!");
+            }
+    
+            // Check liquidity pool reserves
+            const reserves = await this.meta['Swap'].methods.getReserves().call();
+            if (BigInt(reserves[1]) === 0n) {
+                throw new Error("Insufficient liquidity for swap!");
+            }
+    
+            // Approve sBNB transfer for Swap contract
+            await this.approve('sBNB', this.meta['Swap'].options.address, amount);
+    
+            // Execute swap
+            await this.meta['Swap'].methods.token0To1(amount)
+                .send({ from: this.accounts[0] });
+    
+            this.refreshBalance();
+            this.setStatus("Swap successful!");
+        } catch (err) {
+            console.error("Error in token0To1:", err.message);
+            this.setStatus("Transaction failed. Check console for details.");
+        }
+    },    
 
     token1To0: async function() {
         this.setStatus("Initiating transaction... (please wait)");
-
-        // TODO
-
-        this.setStatus("Transaction complete!");
-    },
-
+    
+        try {
+            const amount = parseInt(document.getElementById("swap1").value * 10**8).toString();
+    
+            console.log("Swapping sTSLA -> sBNB, Amount:", amount);
+    
+            // Ensure valid input
+            if (BigInt(amount) <= 0n) {
+                throw new Error("Swap amount must be greater than zero.");
+            }
+    
+            // Check user's sTSLA balance
+            const userBalance = await this.meta['sTSLA'].methods.balanceOf(this.accounts[0]).call();
+            if (BigInt(userBalance) < BigInt(amount)) {
+                throw new Error("Insufficient sTSLA balance!");
+            }
+    
+            // Check liquidity pool reserves
+            const reserves = await this.meta['Swap'].methods.getReserves().call();
+            if (BigInt(reserves[0]) === 0n) {
+                throw new Error("Insufficient liquidity for swap!");
+            }
+    
+            // Approve sTSLA transfer for Swap contract
+            await this.approve('sTSLA', this.meta['Swap'].options.address, amount);
+    
+            // Execute swap
+            await this.meta['Swap'].methods.token1To0(amount)
+                .send({ from: this.accounts[0] });
+    
+            this.refreshBalance();
+            this.setStatus("Swap successful!");
+        } catch (err) {
+            console.error("Error in token1To0:", err.message);
+            this.setStatus("Transaction failed. Check console for details.");
+        }
+    },    
 };
 
 window.App = App;
 
-window.addEventListener("load", function() {
+window.addEventListener("load", async function() {
     if (window.ethereum) {
-        // use MetaMask's provider
-        App.web3 = new Web3(window.ethereum);
-        window.ethereum.enable(); // get permission to access accounts
+        try {
+            App.web3 = new Web3(window.ethereum);
+            const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+            App.accounts = accounts; // Store connected accounts
+            console.log("Connected Account:", App.accounts[0]);
+        } catch (error) {
+            console.error("User denied account access:", error);
+        }
     } else {
-        console.warn(
-            "No web3 detected. Falling back to http://127.0.0.1:8545. You should remove this fallback when you deploy live",
-        );
-        // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
-        App.web3 = new Web3(
-            new Web3.providers.HttpProvider("http://127.0.0.1:8545"),
-        );
+        console.warn("No web3 detected. Falling back to http://127.0.0.1:8545.");
+        App.web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:8545"));
     }
 
-    App.start();
+    // Ensure start() is only called when accounts are available
+    if (App.accounts && App.accounts.length > 0) {
+        App.start();
+    } else {
+        console.error("No accounts available. MetaMask connection failed.");
+    }
+
+    console.log("Accounts from MetaMask:", App.accounts);
 });
 
 
