@@ -174,7 +174,8 @@ const App = {
         try {
             const sAsset = document.getElementById("sAsset").value;
             const deposit = parseInt(document.getElementById("deposit").value * 10**8).toString();
-            const CR = parseInt(document.getElementById("CR").value * 10**8).toString();
+            // const CR = parseInt(document.getElementById("CR").value * 10**8).toString();
+            const CR = parseInt(document.getElementById("CR").value).toString();
     
             console.log("Minting:", sAsset, "Deposit:", deposit, "CR:", CR);
     
