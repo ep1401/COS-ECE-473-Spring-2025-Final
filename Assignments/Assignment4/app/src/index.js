@@ -226,23 +226,37 @@ const App = {
         this.setStatus("Initiating transaction... (please wait)");
     
         try {
-            const liquidity0 = parseInt(document.getElementById("liquidity0").value * 10 ** 8).toString();
+            const liquidity0Input = document.getElementById("liquidity0").value;
+            const liquidity1Input = document.getElementById("liquidity1").value;
+    
+            if (!liquidity0Input && !liquidity1Input) {
+                throw new Error("Please enter at least one token amount.");
+            }
+    
             const reserves = await this.meta['Swap'].methods.getReserves().call();
     
             if (BigInt(reserves[0]) === 0n || BigInt(reserves[1]) === 0n) {
                 throw new Error("Pool not initialized. Call init() first.");
             }
     
-            // Calculate token1Amount using pool ratio
-            const token1Amount = (BigInt(reserves[1]) * BigInt(liquidity0)) / BigInt(reserves[0]);
+            let liquidity0, token1Amount;
     
-            // Approve both tokens
+            if (liquidity0Input) {
+                // Use liquidity0 directly (ignores liquidity1 if also provided)
+                liquidity0 = parseInt(parseFloat(liquidity0Input) * 10 ** 8).toString();
+                token1Amount = (BigInt(reserves[1]) * BigInt(liquidity0)) / BigInt(reserves[0]);
+            } else {
+                // Only liquidity1 was provided, derive liquidity0
+                const liquidity1 = parseInt(parseFloat(liquidity1Input) * 10 ** 8);
+                token1Amount = BigInt(liquidity1);
+                liquidity0 = ((BigInt(reserves[0]) * token1Amount) / BigInt(reserves[1])).toString();
+            }
+    
             await this.approve('sBNB', this.meta['Swap'].options.address, liquidity0);
             await this.approve('sTSLA', this.meta['Swap'].options.address, token1Amount.toString());
     
             console.log("Approvals done:", liquidity0, token1Amount.toString());
     
-            // Call addLiquidity with token0Amount
             await this.meta['Swap'].methods.addLiquidity(liquidity0)
                 .send({ from: this.accounts[0] });
     
